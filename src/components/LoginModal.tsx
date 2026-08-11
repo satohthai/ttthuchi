@@ -4,13 +4,9 @@ import {
   Lock,
   Eye,
   EyeOff,
-  CheckCircle2,
   AlertCircle,
-  Sparkles,
   ArrowRight,
-  UserPlus,
   ShieldCheck,
-  Trash2,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { User } from '../types';
@@ -39,16 +35,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 }) => {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [password, setPassword] = useState<string>('1');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
-
-  // New register fields
-  const [newName, setNewName] = useState<string>('');
-  const [newEmail, setNewEmail] = useState<string>('');
-  const [newPassword, setNewPassword] = useState<string>('1');
 
   useEffect(() => {
     if (isOpen) {
@@ -70,8 +60,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const selectedUser = users.find((u) => u.id === selectedUserId);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
@@ -90,28 +78,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       onShowToast(`Đăng nhập thành công! Chào mừng ${res.user.name}`);
       onSuccess(res.user);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Mật khẩu không chính xác. Mặc định là 1.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName || !newEmail) {
-      setErrorMsg('Vui lòng nhập tên và email.');
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMsg(null);
-
-    try {
-      const res = await api.register(newName, newEmail, '', newPassword || '1');
-      onShowToast(`Đã tạo tài khoản thành công!`);
-      onSuccess(res.user);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi khi tạo tài khoản mới.');
+      setErrorMsg(err.message || 'Mật khẩu không chính xác.');
     } finally {
       setIsLoading(false);
     }
@@ -127,9 +94,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               ₫
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight">FinFamily — Đăng Nhập</h2>
+              <h2 className="text-xl font-black tracking-tight">FinFamily — Form Đăng Nhập</h2>
               <p className="text-xs text-emerald-100 opacity-90">
-                Chọn tên thành viên và nhập mật khẩu (mặc định: <strong>1</strong>)
+                Chọn Họ & Tên thành viên và nhập mật khẩu bảo mật
               </p>
             </div>
           </div>
@@ -143,174 +110,94 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
-          {!isRegisterMode ? (
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Select User Name */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  1. Chọn tên người dùng
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Select User Name */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                1. Chọn Họ & Tên thành viên đăng nhập
+              </label>
+
+              {/* Users List Grid */}
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                {users.map((u) => {
+                  const isSelected = u.id === selectedUserId;
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedUserId(u.id);
+                        setErrorMsg(null);
+                      }}
+                      className={`flex flex-col items-center justify-center rounded-2xl p-3 text-center transition-all border ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-500 ring-2 ring-emerald-500/20'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                        alt={u.name}
+                        className="h-10 w-10 rounded-full object-cover mb-1.5 border border-slate-200 dark:border-slate-700"
+                      />
+                      <span className="text-xs font-bold truncate max-w-full">{u.name}</span>
+                      <span className="text-[10px] text-slate-400 capitalize">{u.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  2. Mật khẩu truy cập
                 </label>
-
-                {/* Users List Grid */}
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {users.map((u) => {
-                    const isSelected = u.id === selectedUserId;
-                    return (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedUserId(u.id);
-                          setErrorMsg(null);
-                        }}
-                        className={`flex flex-col items-center justify-center rounded-2xl p-3 text-center transition-all border ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-500 ring-2 ring-emerald-500/20'
-                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
-                      >
-                        <img
-                          src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                          alt={u.name}
-                          className="h-10 w-10 rounded-full object-cover mb-1.5 border border-slate-200 dark:border-slate-700"
-                        />
-                        <span className="text-xs font-bold truncate max-w-full">{u.name}</span>
-                        <span className="text-[10px] text-slate-400 capitalize">{u.role}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Bảo mật mã hóa
+                </span>
               </div>
 
-              {/* Password Input */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    2. Nhập Mật khẩu
-                  </label>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    Mặc định: <strong className="font-mono underline">1</strong>
-                  </span>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="h-4 w-4" />
                 </div>
-
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mật khẩu (mặc định là 1)"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-3 text-xs font-mono text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Bạn có thể đổi hoặc xóa mật khẩu bất kỳ lúc nào trong Cài Đặt.
-                </p>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="space-y-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-indigo-600 py-3.5 text-xs font-bold text-white shadow-lg hover:from-emerald-700 hover:to-indigo-700 disabled:opacity-50 transition-all"
-                >
-                  {isLoading ? 'Đang xác thực...' : 'Đăng Nhập Ngay'} <ArrowRight className="h-4 w-4" />
-                </button>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPassword('1');
-                      onShowToast('Đã điền mật khẩu mặc định: 1');
-                    }}
-                    className="text-slate-500 hover:text-emerald-600 dark:text-slate-400 underline font-medium"
-                  >
-                    Sử dụng mật khẩu mặc định (1)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsRegisterMode(true)}
-                    className="text-indigo-600 hover:underline font-bold dark:text-indigo-400 flex items-center gap-1"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" /> Tạo thành viên mới
-                  </button>
-                </div>
-              </div>
-            </form>
-          ) : (
-            /* Register Mode Form */
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Họ & Tên
-                </label>
                 <input
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ví dụ: Nguyễn Văn D"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  required
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu của bạn..."
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-10 py-3 text-xs font-mono text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Địa chỉ Email
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="email@domain.com"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Mật khẩu (Mặc định: 1)
-                </label>
-                <input
-                  type="text"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsRegisterMode(false)}
-                  className="flex-1 rounded-2xl border border-slate-200 bg-slate-100 py-3 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
-                  Quay lại đăng nhập
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 rounded-2xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-md hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {isLoading ? 'Đang tạo...' : 'Tạo Tài Khoản'}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </form>
-          )}
+              <p className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Mật khẩu được bảo vệ an toàn. Bạn có thể thay đổi hoặc xóa trong Cài Đặt.
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-indigo-600 py-3.5 text-xs font-bold text-white shadow-lg hover:from-emerald-700 hover:to-indigo-700 disabled:opacity-50 transition-all"
+              >
+                {isLoading ? 'Đang xác thực...' : 'Đăng Nhập Ngay'} <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   );
 };
+
