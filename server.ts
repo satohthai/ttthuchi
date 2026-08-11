@@ -26,12 +26,12 @@ app.use(express.json());
 let users: User[] = [
   {
     id: "usr-1",
-    name: "Nguyễn Văn A",
-    email: "demo@example.com",
+    name: "Admin",
+    email: "admin@example.com",
     phone: "0901234567",
     role: "admin",
     status: "active",
-    password: "1",
+    password: "thai1991",
     hasPassword: true,
     createdAt: "2026-01-01T00:00:00.000Z",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
@@ -669,13 +669,13 @@ app.post("/api/auth/login", (req, res) => {
     });
   }
 
-  // Password check: Default is "1". If user has set hasPassword = false or empty password, allow direct login
+  // Password check: If user has set hasPassword = false or empty password, allow direct login
   const requiresPassword = user.hasPassword !== false && !!user.password;
   if (requiresPassword) {
-    if (password !== user.password && password !== "1") {
+    if (password !== user.password) {
       return res.status(400).json({
         success: false,
-        error: { code: "INVALID_CREDENTIALS", message: "Mật khẩu không chính xác. Mặc định là 1." },
+        error: { code: "INVALID_CREDENTIALS", message: "Mật khẩu không chính xác." },
       });
     }
   }

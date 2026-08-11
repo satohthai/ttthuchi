@@ -140,19 +140,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Bảo Mật & Mật Khẩu Đăng Nhập</h3>
           </div>
           <span className="text-[11px] font-semibold text-slate-500">
-            Mật khẩu hiện tại: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{user?.hasPassword !== false ? (user?.password || '1') : 'Đã xóa (Không cần mật khẩu)'}</strong>
+            Mật khẩu hiện tại: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{user?.hasPassword !== false ? '••••••••' : 'Đã xóa (Không cần mật khẩu)'}</strong>
           </span>
         </div>
 
         <p className="text-xs text-slate-600 dark:text-slate-400">
-          Mật khẩu mặc định là <strong className="text-indigo-600 font-mono">1</strong>. Bạn có thể thay đổi mật khẩu mới hoặc xóa mật khẩu hoàn toàn để đăng nhập trực tiếp chỉ bằng việc chọn tên.
+          Mật khẩu tài khoản được mã hóa và bảo mật. Bạn có thể thay đổi mật khẩu mới hoặc xóa mật khẩu hoàn toàn để đăng nhập trực tiếp.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             onClick={async () => {
-              const newPass = window.prompt('Nhập mật khẩu mới cho tài khoản:', '1');
-              if (newPass !== null) {
+              const newPass = window.prompt('Nhập mật khẩu mới cho tài khoản:');
+              if (newPass !== null && newPass.trim() !== '') {
                 try {
                   const { api } = await import('../lib/api');
                   const res = await api.updatePassword(newPass, 'update');
