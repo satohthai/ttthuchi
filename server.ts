@@ -852,8 +852,35 @@ function checkBudgetAlerts(familyId: string, categoryId: string) {
 
 // REST API ROUTES
 
+// Helper to ensure default admin Thái exists in users array
+function ensureDefaultAdminUser() {
+  if (!users) users = [];
+  let thai = users.find((u) => u.id === "usr-1" || u.name === "Thái");
+  if (!thai) {
+    thai = {
+      id: "usr-1",
+      name: "Thái",
+      email: "admin@example.com",
+      phone: "0901234567",
+      role: "admin",
+      status: "active",
+      password: "thai1991",
+      hasPassword: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    };
+    users.unshift(thai);
+  } else {
+    thai.name = "Thái";
+    thai.role = "admin";
+    thai.password = "thai1991";
+    thai.hasPassword = true;
+  }
+}
+
 // Auth Routes
 app.get("/api/auth/users", (req, res) => {
+  ensureDefaultAdminUser();
   const userList = users.map(u => ({
     id: u.id,
     name: u.name,
@@ -866,7 +893,12 @@ app.get("/api/auth/users", (req, res) => {
 });
 
 app.get("/api/auth/me", (req, res) => {
-  const user = users.find((u) => u.id === currentUserId);
+  ensureDefaultAdminUser();
+  let user = users.find((u) => u.id === currentUserId);
+  if (!user) {
+    user = users[0];
+    currentUserId = user.id;
+  }
   const family = families.find((f) => f.id === "fam-1");
   const member = familyMembers.find((fm) => fm.userId === currentUserId);
   res.json({
@@ -880,6 +912,7 @@ app.get("/api/auth/me", (req, res) => {
 });
 
 app.post("/api/auth/login", (req, res) => {
+  ensureDefaultAdminUser();
   const { userId, email, name, password } = req.body;
   let user: User | undefined;
 
@@ -889,6 +922,10 @@ app.post("/api/auth/login", (req, res) => {
     user = users.find((u) => u.email === email);
   } else if (name) {
     user = users.find((u) => u.name === name);
+  }
+
+  if (!user && (userId === "usr-1" || name === "Thái")) {
+    user = users.find((u) => u.id === "usr-1");
   }
 
   if (!user) {

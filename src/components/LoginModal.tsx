@@ -27,15 +27,42 @@ interface UserOption {
   hasPassword?: boolean;
 }
 
+const DEFAULT_USERS: UserOption[] = [
+  {
+    id: 'usr-1',
+    name: 'Thái',
+    email: 'admin@example.com',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    hasPassword: true,
+  },
+  {
+    id: 'usr-2',
+    name: 'Trần Thị B',
+    email: 'tranb@example.com',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    hasPassword: true,
+  },
+  {
+    id: 'usr-3',
+    name: 'Nguyễn Văn C',
+    email: 'vanc@example.com',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    hasPassword: true,
+  },
+];
+
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onSuccess,
   onClose,
   onShowToast,
 }) => {
-  const [users, setUsers] = useState<UserOption[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [users, setUsers] = useState<UserOption[]>(DEFAULT_USERS);
+  const [selectedUserId, setSelectedUserId] = useState<string>('usr-1');
+  const [password, setPassword] = useState<string>('thai1991');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,16 +76,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const loadUsers = async () => {
     try {
       const list = await api.getUsersList();
-      setUsers(list);
-      if (list.length > 0) {
+      if (list && list.length > 0) {
+        setUsers(list);
         const defaultUser = list.find((u) => u.id === 'usr-1' || u.name === 'Thái') || list[0];
         setSelectedUserId(defaultUser.id);
         if (defaultUser.name === 'Thái' || defaultUser.id === 'usr-1') {
           setPassword('thai1991');
         }
+      } else {
+        setUsers(DEFAULT_USERS);
+        setSelectedUserId('usr-1');
+        setPassword('thai1991');
       }
     } catch (err) {
-      console.error('Failed to load users list:', err);
+      console.error('Failed to load users list, falling back to default:', err);
+      setUsers(DEFAULT_USERS);
+      setSelectedUserId('usr-1');
+      setPassword('thai1991');
     }
   };
 
