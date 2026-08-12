@@ -421,6 +421,25 @@ class ApiClient {
   }
 
   // Backup & Firebase Status
+  async getFirebaseConfig(): Promise<{
+    projectId: string;
+    appId: string;
+    apiKey: string;
+    authDomain: string;
+    firestoreDatabaseId: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    measurementId: string;
+    isConnected: boolean;
+    counts: Record<string, number>;
+  }> {
+    return this.fetchJson('/api/firebase/config');
+  }
+
+  async syncAllToFirebase(): Promise<{ message: string }> {
+    return this.fetchJson('/api/firebase/sync-all', { method: 'POST' });
+  }
+
   async getBackupStatus(): Promise<{
     firebase: { isConnected: boolean; projectId: string; databaseId: string };
     autoBackup: {

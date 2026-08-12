@@ -1880,6 +1880,73 @@ app.post("/api/google-sheet/import-all", async (req, res) => {
 });
 
 // New API Endpoints for Firebase & Google Sheet 5-Min Auto-Backup Status
+app.get("/api/firebase/config", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      projectId: firebaseConfig.projectId || "gen-lang-client-0483201894",
+      appId: firebaseConfig.appId || "1:805800390411:web:537e0b7b81c3f0db527c0e",
+      apiKey: firebaseConfig.apiKey || "AIzaSyCjCU9dIASMFOW3BMVs6VejozFIuaqxpoI",
+      authDomain: firebaseConfig.authDomain || "gen-lang-client-0483201894.firebaseapp.com",
+      firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || "ai-studio-qunlthuchigianh-82068185-5d5a-4e6a-b414-ae06b67ad570",
+      storageBucket: firebaseConfig.storageBucket || "gen-lang-client-0483201894.firebasestorage.app",
+      messagingSenderId: firebaseConfig.messagingSenderId || "805800390411",
+      measurementId: firebaseConfig.measurementId || "",
+      isConnected: isFirebaseConnected || !!firestoreDb,
+      counts: {
+        users: users.length,
+        families: families.length,
+        members: familyMembers.length,
+        accounts: accounts.length,
+        categories: categories.length,
+        transactions: transactions.length,
+        budgets: budgets.length,
+        goals: savingsGoals.length,
+        debts: debts.length,
+        recurring: recurringTransactions.length,
+        auditLogs: auditLogs.length,
+      },
+    },
+  });
+});
+
+app.post("/api/firebase/sync-all", async (req, res) => {
+  try {
+    if (!firestoreDb) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Chưa kết nối được với Firebase Firestore Admin SDK." },
+      });
+    }
+
+    console.log("⚡ Đang thực hiện đồng bộ cưỡng chế toàn bộ dữ liệu lên Firebase Firestore...");
+    for (const u of users) await saveToFirestore("users", u.id, u);
+    for (const f of families) await saveToFirestore("families", f.id, f);
+    for (const m of familyMembers) await saveToFirestore("familyMembers", m.id, m);
+    for (const a of accounts) await saveToFirestore("accounts", a.id, a);
+    for (const c of categories) await saveToFirestore("categories", c.id, c);
+    for (const t of transactions) await saveToFirestore("transactions", t.id, t);
+    for (const b of budgets) await saveToFirestore("budgets", b.id, b);
+    for (const g of savingsGoals) await saveToFirestore("savingsGoals", g.id, g);
+    for (const d of debts) await saveToFirestore("debts", d.id, d);
+    for (const r of recurringTransactions) await saveToFirestore("recurringTransactions", r.id, r);
+    for (const l of auditLogs) await saveToFirestore("auditLogs", l.id, l);
+
+    isFirebaseConnected = true;
+    addAuditLog("FIREBASE_SYNC_ALL", "System", undefined, undefined, "Đã lưu và đồng bộ toàn bộ dữ liệu lên Firebase Firestore");
+
+    res.json({
+      success: true,
+      message: "Đã lưu và nâng cấp đồng bộ toàn bộ 100% dữ liệu lên Firebase Firestore thành công!",
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: { message: "Lỗi đồng bộ Firebase: " + err.message },
+    });
+  }
+});
+
 app.get("/api/backup/status", (req, res) => {
   res.json({
     success: true,

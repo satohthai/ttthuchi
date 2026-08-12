@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Globe, Moon, Sun, Lock, ShieldCheck, Download, Database, KeyRound, FileSpreadsheet, ExternalLink, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { User, Globe, Moon, Sun, Lock, ShieldCheck, Download, Database, KeyRound, FileSpreadsheet, ExternalLink, Trash2, AlertTriangle, RefreshCw, Copy, Check, Eye, EyeOff, Flame, Layers } from 'lucide-react';
 import { User as UserType, CurrencyCode } from '../types';
 
 interface SettingsViewProps {
@@ -24,6 +24,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onResetData,
 }) => {
   const [isResetting, setIsResetting] = useState<boolean>(false);
+  const [showFirebaseKeys, setShowFirebaseKeys] = useState<boolean>(true);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isSyncingFirebase, setIsSyncingFirebase] = useState<boolean>(false);
+  const [firebaseSyncMsg, setFirebaseSyncMsg] = useState<string | null>(null);
+
+  const firebaseConfigData = {
+    projectId: "gen-lang-client-0483201894",
+    firestoreDatabaseId: "ai-studio-qunlthuchigianh-82068185-5d5a-4e6a-b414-ae06b67ad570",
+    apiKey: "AIzaSyCjCU9dIASMFOW3BMVs6VejozFIuaqxpoI",
+    authDomain: "gen-lang-client-0483201894.firebaseapp.com",
+    appId: "1:805800390411:web:537e0b7b81c3f0db527c0e",
+    storageBucket: "gen-lang-client-0483201894.firebasestorage.app",
+    messagingSenderId: "805800390411",
+  };
+
+  const handleCopy = (text: string, keyName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(keyName);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleCopyAllJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(firebaseConfigData, null, 2));
+    setCopiedKey('allJson');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleSyncToFirebase = async () => {
+    setIsSyncingFirebase(true);
+    setFirebaseSyncMsg(null);
+    try {
+      const { api } = await import('../lib/api');
+      const res = await api.syncAllToFirebase();
+      setFirebaseSyncMsg(res.message || 'Đã nâng cấp đồng bộ toàn bộ dữ liệu lên Firebase Firestore thành công!');
+      setTimeout(() => setFirebaseSyncMsg(null), 6000);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi kết nối đồng bộ Firebase.');
+    } finally {
+      setIsSyncingFirebase(false);
+    }
+  };
 
   const handleResetData = async () => {
     const confirmFirst = window.confirm(
@@ -76,6 +117,156 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <h3 className="text-lg font-bold text-slate-900 dark:text-white">{user?.name}</h3>
           <p className="text-xs text-slate-500">{user?.email}</p>
           <p className="mt-1 text-[11px] font-semibold text-blue-600">SĐT: {user?.phone || 'Chưa cập nhật'}</p>
+        </div>
+      </div>
+
+      {/* Firebase Firestore Database Integration Card */}
+      <div className="rounded-3xl border border-amber-200/90 bg-amber-50/40 p-6 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-amber-200/60 dark:border-amber-900/50">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20">
+              <Flame className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  Lưu Trữ & Đồng Bộ Firebase Firestore Cloud
+                </h3>
+                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-800 dark:bg-amber-900/80 dark:text-amber-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Đã Kích Hoạt Cloud
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                Toàn bộ dữ liệu 11 bảng thu chi, tài khoản, giao dịch, gia đình, sổ nợ & ngân sách được lưu trữ thời gian thực lên Firebase Cloud.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSyncToFirebase}
+            disabled={isSyncingFirebase}
+            className="shrink-0 flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 text-xs font-bold text-white shadow-md hover:bg-amber-700 disabled:opacity-50 transition-all"
+          >
+            {isSyncingFirebase ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" /> Đang Đồng Bộ...
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4" /> Đồng Bộ 100% Lên Firebase Ngay
+              </>
+            )}
+          </button>
+        </div>
+
+        {firebaseSyncMsg && (
+          <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-800 dark:text-emerald-200 flex items-center gap-2 animate-fadeIn">
+            <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{firebaseSyncMsg}</span>
+          </div>
+        )}
+
+        {/* Firebase Config Key Display Box */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/90 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-amber-500" /> Cấu Hình Khóa Firebase Mặc Định (Firebase Applet Config)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFirebaseKeys(!showFirebaseKeys)}
+                className="flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition-colors"
+              >
+                {showFirebaseKeys ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {showFirebaseKeys ? 'Ẩn Giá Trị' : 'Hiện Khóa'}
+              </button>
+
+              <button
+                onClick={handleCopyAllJson}
+                className="flex items-center gap-1 rounded-xl bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-600 transition-colors"
+              >
+                {copiedKey === 'allJson' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedKey === 'allJson' ? 'Đã Sao Chép All' : 'Sao Chép Cấu Hình JSON'}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Project ID</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                  {showFirebaseKeys ? firebaseConfigData.projectId : '••••••••••••••••'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopy(firebaseConfigData.projectId, 'projectId')}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {copiedKey === 'projectId' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Firestore Database ID</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                  {showFirebaseKeys ? firebaseConfigData.firestoreDatabaseId : '••••••••••••••••'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopy(firebaseConfigData.firestoreDatabaseId, 'firestoreDatabaseId')}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {copiedKey === 'firestoreDatabaseId' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">API Key</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                  {showFirebaseKeys ? firebaseConfigData.apiKey : '••••••••••••••••'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopy(firebaseConfigData.apiKey, 'apiKey')}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {copiedKey === 'apiKey' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Auth Domain</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
+                  {showFirebaseKeys ? firebaseConfigData.authDomain : '••••••••••••••••'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopy(firebaseConfigData.authDomain, 'authDomain')}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {copiedKey === 'authDomain' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:col-span-2">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">App ID</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate max-w-[340px]">
+                  {showFirebaseKeys ? firebaseConfigData.appId : '••••••••••••••••'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleCopy(firebaseConfigData.appId, 'appId')}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {copiedKey === 'appId' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
