@@ -15,7 +15,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenMoreMenu,
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-slate-200 bg-white/95 px-2 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-slate-200 bg-white/95 px-2 backdrop-blur-lg dark:border-slate-800 dark:bg-slate-900/95">
       {/* Trang chủ */}
       <button
         onClick={() => onNavigate('dashboard')}

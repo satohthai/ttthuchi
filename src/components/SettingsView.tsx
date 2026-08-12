@@ -1,5 +1,5 @@
-import React from 'react';
-import { User, Globe, Moon, Sun, Lock, ShieldCheck, Download, Database, KeyRound, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Globe, Moon, Sun, Lock, ShieldCheck, Download, Database, KeyRound, FileSpreadsheet, ExternalLink, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { User as UserType, CurrencyCode } from '../types';
 
 interface SettingsViewProps {
@@ -10,6 +10,7 @@ interface SettingsViewProps {
   onToggleDarkMode: () => void;
   onExportAllData: () => void;
   onOpenGoogleSheet?: () => void;
+  onResetData?: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -20,7 +21,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToggleDarkMode,
   onExportAllData,
   onOpenGoogleSheet,
+  onResetData,
 }) => {
+  const [isResetting, setIsResetting] = useState<boolean>(false);
+
+  const handleResetData = async () => {
+    const confirmFirst = window.confirm(
+      '⚠️ CẢNH BÁO NGHÊM TRỌNG:\n\nHành động này sẽ XÓA TRẮNG TOÀN BỘ dữ liệu:\n- Xóa sạch 100% tất cả giao dịch thu chi\n- Xóa sạch tất cả tài khoản & số dư ví\n- Xóa sạch ngân sách, mục tiêu tiết kiệm, sổ nợ\n- Đồng thời XÓA TRẮNG trên cả Firebase Firestore.\n\nTất cả sẽ về 0 để bạn bắt đầu cài đặt lại từ đầu mà không có dữ liệu ảo.\n\nBạn có CHẮC CHẮN muốn xóa mất trắng dữ liệu không?'
+    );
+
+    if (!confirmFirst) return;
+
+    const confirmSecond = window.prompt(
+      'XÁC NHẬN LẦN 2:\nNhập chữ "RESET" viết hoa vào ô dưới đây để xác nhận xóa sạch toàn bộ dữ liệu:'
+    );
+
+    if (confirmSecond !== 'RESET') {
+      alert('Chữ xác nhận không đúng. Đã hủy thao tác xóa dữ liệu.');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const { api } = await import('../lib/api');
+      const res = await api.resetAllData();
+      alert(res.message || 'Đã xóa trắng toàn bộ dữ liệu thành công!');
+      if (onResetData) {
+        onResetData();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi xóa dữ liệu.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 sm:pb-8">
       <div>
@@ -184,6 +219,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Xóa Mật Khẩu (Đăng Nhập Trực Tiếp)
           </button>
         </div>
+      </div>
+
+      {/* Danger Zone: Full Data Reset */}
+      <div className="overflow-hidden rounded-3xl border border-rose-300 bg-rose-50/70 p-6 shadow-sm dark:border-rose-900/80 dark:bg-rose-950/30 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-rose-200 dark:border-rose-900/60">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400 animate-pulse" />
+            <h3 className="text-sm font-black text-rose-900 dark:text-rose-200 uppercase tracking-wider">
+              Xóa Trắng & Reset Dữ Liệu Ban Đầu
+            </h3>
+          </div>
+          <span className="rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 px-2.5 py-0.5 text-[10px] font-black uppercase">
+            Vùng Nguy Hiểm
+          </span>
+        </div>
+
+        <p className="text-xs text-rose-800 dark:text-rose-300 leading-relaxed font-medium">
+          Dùng nút này khi bạn muốn <strong>XÓA MẤT TRẮNG TOÀN BỘ</strong> tất cả lịch sử thu chi, danh sách tài khoản/ví, ngân sách, mục tiêu tiết kiệm, sổ nợ và đồng bộ xóa sạch trên Firebase Firestore để thực hiện cài đặt lại dữ liệu thật từ đầu.
+        </p>
+
+        <button
+          onClick={handleResetData}
+          disabled={isResetting}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-6 py-3.5 text-xs font-extrabold text-white shadow-lg shadow-rose-600/25 hover:bg-rose-700 disabled:opacity-50 transition-all"
+        >
+          {isResetting ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" /> Đang xóa trắng dữ liệu hệ thống & Firebase...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4" /> Xóa Trắng Dữ Liệu & Reset Hệ Thống Về 0
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

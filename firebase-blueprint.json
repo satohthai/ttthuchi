@@ -1,0 +1,234 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User accounts in the app",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "password": { "type": "string" },
+        "hasPassword": { "type": "boolean" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "families": {
+      "title": "Family",
+      "description": "Family groups",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "currency": { "type": "string" },
+        "timezone": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "ownerId"]
+    },
+    "familyMembers": {
+      "title": "FamilyMember",
+      "description": "Members belonging to a family",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "joinedDate": { "type": "string" },
+        "avatar": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "familyId", "name"]
+    },
+    "accounts": {
+      "title": "Account",
+      "description": "Financial accounts like Cash, Bank, E-Wallet",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "balance": { "type": "number" },
+        "initialBalance": { "type": "number" },
+        "bankName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "currency": { "type": "string" },
+        "color": { "type": "string" },
+        "icon": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "name", "type", "balance"]
+    },
+    "categories": {
+      "title": "Category",
+      "description": "Income/Expense categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "status": { "type": "string" },
+        "isDefault": { "type": "boolean" },
+        "parentId": { "type": "string" }
+      },
+      "required": ["id", "name", "type"]
+    },
+    "transactions": {
+      "title": "Transaction",
+      "description": "Income, Expense, Transfer transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "accountId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "userId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "note": { "type": "string" },
+        "image": { "type": "string" },
+        "status": { "type": "string" },
+        "transferToAccountId": { "type": "string" },
+        "isRecurring": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "accountId", "type", "amount", "date"]
+    },
+    "budgets": {
+      "title": "Budget",
+      "description": "Spending budgets for categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "amount": { "type": "number" },
+        "period": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "alertThreshold": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "categoryId", "amount"]
+    },
+    "savingsGoals": {
+      "title": "SavingsGoal",
+      "description": "Savings goals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "targetDate": { "type": "string" },
+        "category": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "name", "targetAmount"]
+    },
+    "debts": {
+      "title": "Debt",
+      "description": "Debts and loans",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "personName": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "note": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "personName", "amount"]
+    },
+    "recurringTransactions": {
+      "title": "RecurringTransaction",
+      "description": "Scheduled or recurring bills and income",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "accountId": { "type": "string" },
+        "frequency": { "type": "string" },
+        "nextDueDate": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "familyId", "name", "amount"]
+    },
+    "notifications": {
+      "title": "NotificationItem",
+      "description": "App notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "familyId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "message"]
+    },
+    "auditLogs": {
+      "title": "AuditLog",
+      "description": "System activity logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "familyId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "action"]
+    },
+    "systemSettings": {
+      "title": "SystemSettings",
+      "description": "System configuration and backup settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "backupEnabled": { "type": "boolean" },
+        "backupIntervalMinutes": { "type": "number" },
+        "lastBackupTime": { "type": "string" },
+        "googleSheetUrl": { "type": "string" },
+        "sheetBackupCount": { "type": "number" },
+        "firebaseConnected": { "type": "boolean" }
+      },
+      "required": ["id"]
+    }
+  }
+}

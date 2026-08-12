@@ -1,5 +1,8 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import { createServer as createViteServer } from "vite";
 import {
   User,
@@ -18,6 +21,72 @@ import {
   DebtPayment,
   GoalTransaction,
 } from "./src/types";
+
+// Firebase Applet Config Initialization
+let firebaseConfig: any = {};
+try {
+  const configFile = fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8");
+  firebaseConfig = JSON.parse(configFile);
+} catch (e) {
+  console.error("Could not load firebase-applet-config.json", e);
+}
+
+if (!getApps().length && firebaseConfig.projectId) {
+  try {
+    initializeApp({
+      projectId: firebaseConfig.projectId,
+    });
+    console.log("🔥 Firebase Admin Initialized with Project ID:", firebaseConfig.projectId);
+  } catch (err) {
+    console.error("Firebase Admin initialization error:", err);
+  }
+}
+
+const firestoreDb = getApps().length
+  ? getFirestore(firebaseConfig.firestoreDatabaseId ? firebaseConfig.firestoreDatabaseId : undefined)
+  : null;
+
+let isFirebaseConnected = false;
+
+// Helper to save document to Firebase Firestore
+async function saveToFirestore(collectionName: string, id: string, data: any) {
+  if (!firestoreDb) return;
+  try {
+    const cleanData = JSON.parse(JSON.stringify(data));
+    await firestoreDb.collection(collectionName).doc(id).set(cleanData, { merge: true });
+    isFirebaseConnected = true;
+  } catch (err) {
+    console.error(`Error writing to Firestore (${collectionName}/${id}):`, err);
+  }
+}
+
+// Helper to delete document from Firebase Firestore
+async function deleteFromFirestore(collectionName: string, id: string) {
+  if (!firestoreDb) return;
+  try {
+    await firestoreDb.collection(collectionName).doc(id).delete();
+    isFirebaseConnected = true;
+  } catch (err) {
+    console.error(`Error deleting from Firestore (${collectionName}/${id}):`, err);
+  }
+}
+
+// Helper to clear entire collection from Firebase Firestore
+async function clearCollectionInFirestore(collectionName: string) {
+  if (!firestoreDb) return;
+  try {
+    const snap = await firestoreDb.collection(collectionName).get();
+    if (snap.empty) return;
+    const batch = firestoreDb.batch();
+    snap.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    isFirebaseConnected = true;
+  } catch (err) {
+    console.error(`Error clearing collection ${collectionName}:`, err);
+  }
+}
 
 const app = express();
 app.use(express.json());
@@ -517,12 +586,139 @@ let auditLogs: AuditLog[] = [
 // Helper: Current Logged In User
 let currentUserId = "usr-1";
 
-// Helper Functions for Balance recalculation & Audit log
 let googleSheetConfig = {
   url: "https://docs.google.com/spreadsheets/d/1mx3RCdD66a0iRFsAgZ62GtK3vTwbQIpO4cRKGzLTWWY/edit?usp=sharing",
   isConnected: true,
   lastSyncedAt: new Date().toISOString(),
 };
+
+// 5-Minute Auto-Backup Engine Configuration
+let autoBackupConfig = {
+  autoBackupEnabled: true,
+  intervalMinutes: 5,
+  lastBackupTime: new Date().toISOString(),
+  nextBackupTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  totalBackups: 0,
+  lastStatus: "Sẵn sàng (Tự động đẩy Firebase sang Google Sheet định kỳ 5 phút)",
+};
+
+// Boot sync function: reads from Firebase Firestore or seeds initial data
+async function initFirestoreData() {
+  if (!firestoreDb) {
+    console.log("⚠️ Firestore database reference is not active.");
+    return;
+  }
+
+  try {
+    const usersSnap = await firestoreDb.collection("users").get();
+    if (!usersSnap.empty) {
+      console.log("✅ Đang tải dữ liệu thực tế từ Firebase Firestore...");
+      users = usersSnap.docs.map((doc) => doc.data() as User);
+
+      const familiesSnap = await firestoreDb.collection("families").get();
+      if (!familiesSnap.empty) families = familiesSnap.docs.map((doc) => doc.data() as Family);
+
+      const membersSnap = await firestoreDb.collection("familyMembers").get();
+      if (!membersSnap.empty) familyMembers = membersSnap.docs.map((doc) => doc.data() as FamilyMember);
+
+      const accountsSnap = await firestoreDb.collection("accounts").get();
+      accounts = accountsSnap.empty ? [] : accountsSnap.docs.map((doc) => doc.data() as Account);
+
+      const categoriesSnap = await firestoreDb.collection("categories").get();
+      if (!categoriesSnap.empty) categories = categoriesSnap.docs.map((doc) => doc.data() as Category);
+
+      const txsSnap = await firestoreDb.collection("transactions").get();
+      transactions = txsSnap.empty ? [] : txsSnap.docs.map((doc) => doc.data() as Transaction);
+
+      const budgetsSnap = await firestoreDb.collection("budgets").get();
+      budgets = budgetsSnap.empty ? [] : budgetsSnap.docs.map((doc) => doc.data() as Budget);
+
+      const goalsSnap = await firestoreDb.collection("savingsGoals").get();
+      savingsGoals = goalsSnap.empty ? [] : goalsSnap.docs.map((doc) => doc.data() as SavingsGoal);
+
+      const debtsSnap = await firestoreDb.collection("debts").get();
+      debts = debtsSnap.empty ? [] : debtsSnap.docs.map((doc) => doc.data() as Debt);
+
+      const recSnap = await firestoreDb.collection("recurringTransactions").get();
+      recurringTransactions = recSnap.empty ? [] : recSnap.docs.map((doc) => doc.data() as RecurringTransaction);
+
+      const logsSnap = await firestoreDb.collection("auditLogs").get();
+      auditLogs = logsSnap.empty ? [] : logsSnap.docs.map((doc) => doc.data() as AuditLog);
+
+      isFirebaseConnected = true;
+      console.log(`🎉 Firebase Firestore đã đồng bộ thành công: ${transactions.length} giao dịch, ${accounts.length} tài khoản!`);
+    } else {
+      console.log("🚀 Firestore đang trống, khởi tạo thông tin cấu hình ban đầu sạch lên Firebase...");
+      for (const u of users) await saveToFirestore("users", u.id, u);
+      for (const f of families) await saveToFirestore("families", f.id, f);
+      for (const m of familyMembers) await saveToFirestore("familyMembers", m.id, m);
+      for (const c of categories) await saveToFirestore("categories", c.id, c);
+      isFirebaseConnected = true;
+      console.log("✨ Đã tải cấu hình ban đầu sạch lên Firebase Firestore!");
+    }
+  } catch (err) {
+    console.error("Lỗi khi kết nối Firebase Firestore:", err);
+  }
+}
+
+// 5-Minute Auto Backup Function to Google Sheet
+async function execute5MinBackupToGoogleSheet() {
+  autoBackupConfig.nextBackupTime = new Date(Date.now() + autoBackupConfig.intervalMinutes * 60 * 1000).toISOString();
+
+  if (!autoBackupConfig.autoBackupEnabled || !googleSheetConfig.url) {
+    return;
+  }
+
+  const payload = {
+    backupType: "Scheduled 5-Min Backup",
+    database: "Firebase Firestore",
+    projectId: firebaseConfig.projectId,
+    databaseId: firebaseConfig.firestoreDatabaseId,
+    timestamp: new Date().toISOString(),
+    Transactions: transactions,
+    Accounts: accounts,
+    Categories: categories,
+    Budgets: budgets,
+    Goals: savingsGoals,
+    Debts: debts,
+    Recurring: recurringTransactions,
+    AuditLogs: auditLogs,
+    Family: families,
+    Members: familyMembers,
+  };
+
+  try {
+    console.log(`🔄 [Tự động 5 Phút] Đẩy dữ liệu từ Firebase Firestore sang Google Sheet: ${googleSheetConfig.url}`);
+    
+    // Perform fetch to Google Sheet Script App URL
+    const res = await fetch(googleSheetConfig.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "syncAll",
+        source: "Firebase Firestore (5-Min Auto Backup)",
+        timestamp: new Date().toISOString(),
+        data: payload,
+      }),
+    });
+
+    autoBackupConfig.lastBackupTime = new Date().toISOString();
+    autoBackupConfig.totalBackups += 1;
+    autoBackupConfig.lastStatus = `Đã sao lưu thành công lúc ${new Date().toLocaleTimeString("vi-VN")}`;
+    googleSheetConfig.lastSyncedAt = autoBackupConfig.lastBackupTime;
+    googleSheetConfig.isConnected = true;
+
+    addAuditLog("FIREBASE_SHEET_5MIN_BACKUP", "Backup", undefined, undefined, `Tự động sao lưu dữ liệu từ Firebase sang Google Sheet thành công (${transactions.length} giao dịch)`);
+  } catch (err: any) {
+    console.error("❌ Lỗi sao lưu 5 phút sang Google Sheet:", err.message);
+    autoBackupConfig.lastStatus = `Chưa đẩy được (Thử lại sau 5 phút): ${err.message}`;
+  }
+}
+
+// Start 5-Minute Interval
+setInterval(() => {
+  execute5MinBackupToGoogleSheet();
+}, 5 * 60 * 1000);
 
 async function pushToGoogleSheet(action: string, entity: string, data: any) {
   if (!googleSheetConfig.url || !googleSheetConfig.isConnected) return;
@@ -1574,9 +1770,92 @@ app.post("/api/google-sheet/import-all", async (req, res) => {
   }
 });
 
+// New API Endpoints for Firebase & Google Sheet 5-Min Auto-Backup Status
+app.get("/api/backup/status", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      firebase: {
+        isConnected: isFirebaseConnected,
+        projectId: firebaseConfig.projectId || "gen-lang-client-0483201894",
+        databaseId: firebaseConfig.firestoreDatabaseId || "ai-studio-qunlthuchigianh-82068185-5d5a-4e6a-b414-ae06b67ad570",
+      },
+      autoBackup: autoBackupConfig,
+      googleSheetUrl: googleSheetConfig.url,
+      counts: {
+        transactions: transactions.length,
+        accounts: accounts.length,
+        categories: categories.length,
+        budgets: budgets.length,
+        goals: savingsGoals.length,
+        debts: debts.length,
+      },
+    },
+  });
+});
+
+app.post("/api/backup/trigger-now", async (req, res) => {
+  try {
+    await execute5MinBackupToGoogleSheet();
+    res.json({
+      success: true,
+      data: autoBackupConfig,
+      message: "Đã kích hoạt đồng bộ toàn bộ dữ liệu từ Firebase sang Google Sheet thành công!",
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: { message: "Lỗi đồng bộ Google Sheet: " + err.message },
+    });
+  }
+});
+
+// Full System Reset Endpoint (Wipes memory and Firebase collections completely to 0)
+app.post("/api/system/reset-all-data", async (req, res) => {
+  try {
+    transactions = [];
+    accounts = [];
+    budgets = [];
+    savingsGoals = [];
+    debts = [];
+    recurringTransactions = [];
+    auditLogs = [];
+
+    if (firestoreDb) {
+      await clearCollectionInFirestore("transactions");
+      await clearCollectionInFirestore("accounts");
+      await clearCollectionInFirestore("budgets");
+      await clearCollectionInFirestore("savingsGoals");
+      await clearCollectionInFirestore("debts");
+      await clearCollectionInFirestore("recurringTransactions");
+      await clearCollectionInFirestore("auditLogs");
+    }
+
+    addAuditLog("SYSTEM_RESET_ALL_DATA", "System", undefined, undefined, "Đã xóa trắng toàn bộ dữ liệu hệ thống và Firebase Firestore để cài đặt lại từ đầu.");
+
+    res.json({
+      success: true,
+      message: "Đã xóa TRẮNG toàn bộ dữ liệu thành công! Bạn có thể bắt đầu cài đặt tài khoản và thu chi mới hoàn toàn.",
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: { message: "Lỗi khi xóa dữ liệu hệ thống: " + err.message },
+    });
+  }
+});
+
 // Serve Vite App or Static Files
 async function startServer() {
   const PORT = 3000;
+
+  // Initialize Firestore Data on Server Startup
+  await initFirestoreData();
+
+  // Run an initial backup check shortly after startup
+  setTimeout(() => {
+    execute5MinBackupToGoogleSheet();
+  }, 10000);
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

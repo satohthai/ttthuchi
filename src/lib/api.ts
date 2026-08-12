@@ -387,6 +387,31 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // Backup & Firebase Status
+  async getBackupStatus(): Promise<{
+    firebase: { isConnected: boolean; projectId: string; databaseId: string };
+    autoBackup: {
+      autoBackupEnabled: boolean;
+      intervalMinutes: number;
+      lastBackupTime: string;
+      nextBackupTime: string;
+      totalBackups: number;
+      lastStatus: string;
+    };
+    googleSheetUrl: string;
+    counts: { transactions: number; accounts: number; categories: number; budgets: number; goals: number; debts: number };
+  }> {
+    return this.fetchJson('/api/backup/status');
+  }
+
+  async triggerBackupNow(): Promise<{ message: string }> {
+    return this.fetchJson('/api/backup/trigger-now', { method: 'POST' });
+  }
+
+  async resetAllData(): Promise<{ message: string }> {
+    return this.fetchJson('/api/system/reset-all-data', { method: 'POST' });
+  }
 }
 
 export const api = new ApiClient();

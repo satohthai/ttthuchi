@@ -12,6 +12,10 @@ import {
   ChevronDown,
   Wifi,
   WifiOff,
+  Menu,
+  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { User, Family, NotificationItem, CurrencyCode } from '../types';
 
@@ -32,6 +36,8 @@ interface HeaderProps {
   onNavigate: (view: string) => void;
   isOnline: boolean;
   onToggleOnline: () => void;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,14 +56,26 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   isOnline,
   onToggleOnline,
+  isSidebarCollapsed = false,
+  onToggleSidebar,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/90 sm:px-6">
-      {/* Left: App Title & Family Context */}
-      <div className="flex items-center gap-3">
+      {/* Left: App Title & Sidebar Toggle */}
+      <div className="flex items-center gap-2.5">
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 transition-all shadow-xs"
+            title={isSidebarCollapsed ? "Mở rộng Menu bên trái" : "Thu gọn Menu bên trái (Mở rộng không gian)"}
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </button>
+        )}
+
         <div
           onClick={() => onNavigate('dashboard')}
           className="flex cursor-pointer items-center gap-2.5 font-extrabold text-indigo-600 dark:text-indigo-400 group"
@@ -72,14 +90,32 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="hidden h-5 w-[1px] bg-slate-200 dark:bg-slate-800 md:block" />
 
-        {/* Current Family Badge */}
+        {/* Current Family & Firebase Sync Status Badge */}
         {family && (
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-slate-100/80 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />
-            <span className="font-bold">{family.name}</span>
-            <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-              {memberRole}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200/60 bg-slate-100/80 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />
+              <span className="font-bold">{family.name}</span>
+              <span className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                {memberRole}
+              </span>
+            </div>
+
+            {/* Firebase & 5m Sheet Backup Status Badge */}
+            <div
+              onClick={() => onNavigate('google-sheet')}
+              className="hidden lg:flex cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700/40 hover:bg-emerald-100 transition-colors"
+              title="Firebase kết nối trực tiếp - Tự động đẩy Google Sheet 5 phút"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>🔥 Firebase DB</span>
+              <span className="text-[10px] bg-emerald-200/80 dark:bg-emerald-800/80 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.2 rounded-full font-extrabold">
+                Backup 5m Sheet
+              </span>
+            </div>
           </div>
         )}
       </div>

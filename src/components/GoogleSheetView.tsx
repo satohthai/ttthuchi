@@ -14,6 +14,7 @@ import {
   Sparkles,
   Info,
   ShieldCheck,
+  ArrowUpRight,
 } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -217,8 +218,28 @@ export const GoogleSheetView: React.FC<GoogleSheetViewProps> = ({ onShowToast, o
   const [copiedScript, setCopiedScript] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'config' | 'code' | 'instructions'>('config');
 
+  // Firebase & 5-Min Backup States
+  const [backupInfo, setBackupInfo] = useState<{
+    firebaseConnected: boolean;
+    projectId: string;
+    databaseId: string;
+    autoBackupEnabled: boolean;
+    intervalMinutes: number;
+    lastBackupTime: string;
+    nextBackupTime: string;
+    totalBackups: number;
+    lastStatus: string;
+    counts: { transactions: number; accounts: number; categories: number; budgets: number; goals: number; debts: number };
+  } | null>(null);
+  const [isTriggeringBackup, setIsTriggeringBackup] = useState<boolean>(false);
+
   useEffect(() => {
     loadConfig();
+    loadBackupStatus();
+    const timer = setInterval(() => {
+      loadBackupStatus();
+    }, 15000); // refresh status every 15s
+    return () => clearInterval(timer);
   }, []);
 
   const loadConfig = async () => {
@@ -231,6 +252,39 @@ export const GoogleSheetView: React.FC<GoogleSheetViewProps> = ({ onShowToast, o
       }
     } catch (err) {
       console.error('Failed to load Google Sheet config:', err);
+    }
+  };
+
+  const loadBackupStatus = async () => {
+    try {
+      const res = await api.getBackupStatus();
+      setBackupInfo({
+        firebaseConnected: res.firebase.isConnected,
+        projectId: res.firebase.projectId,
+        databaseId: res.firebase.databaseId,
+        autoBackupEnabled: res.autoBackup.autoBackupEnabled,
+        intervalMinutes: res.autoBackup.intervalMinutes,
+        lastBackupTime: res.autoBackup.lastBackupTime,
+        nextBackupTime: res.autoBackup.nextBackupTime,
+        totalBackups: res.autoBackup.totalBackups,
+        lastStatus: res.autoBackup.lastStatus,
+        counts: res.counts,
+      });
+    } catch (err) {
+      console.error('Failed to load backup status:', err);
+    }
+  };
+
+  const handleTriggerBackupNow = async () => {
+    setIsTriggeringBackup(true);
+    try {
+      await api.triggerBackupNow();
+      onShowToast('Đã đẩy và sao lưu dữ liệu từ Firebase sang Google Sheet thành công!');
+      await loadBackupStatus();
+    } catch (err: any) {
+      onShowToast(err.message || 'Lỗi khi đẩy dữ liệu sang Google Sheet.');
+    } finally {
+      setIsTriggeringBackup(false);
     }
   };
 
@@ -469,6 +523,91 @@ export const GoogleSheetView: React.FC<GoogleSheetViewProps> = ({ onShowToast, o
                 </span>
               </div>
             )}
+          </div>
+
+          {/* 5-Minute Auto-Backup Status & Control Box */}
+          <div className="rounded-3xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/70 via-white to-emerald-50/70 p-6 shadow-sm dark:border-indigo-800/60 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/40">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100 dark:border-indigo-900/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/25">
+                  <RefreshCw className="h-6 w-6 animate-spin-slow" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      Hệ Thống Tự Động Sao Lưu 定期 (5 Phút)
+                    </h3>
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                      Firebase ➔ Sheet
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    Dữ liệu chính lưu trên <strong>Firebase Firestore</strong> và định kỳ <strong>5 phút tự động đẩy backup</strong> sang Google Sheet
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTriggerBackupNow}
+                disabled={isTriggeringBackup || !sheetUrl}
+                className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50 transition-all shrink-0"
+              >
+                {isTriggeringBackup ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Đang đẩy dữ liệu sang Sheet...
+                  </>
+                ) : (
+                  <>
+                    <ArrowUpRight className="h-4 w-4" /> Sao Lưu Firebase Sang Sheet Ngay
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Backup Engine Live Metrics Grid */}
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Cơ Sở Dữ Liệu Chính</div>
+                <div className="mt-1 flex items-center gap-1.5 text-sm font-extrabold text-slate-900 dark:text-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Firebase Firestore
+                </div>
+                <div className="mt-1 text-[10px] text-slate-400 font-mono truncate">
+                  {backupInfo?.projectId || 'gen-lang-client-...'}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Chu Kỳ Sao Lưu Auto</div>
+                <div className="mt-1 text-sm font-extrabold text-indigo-600 dark:text-indigo-400">
+                  Mỗi 5 phút / Lần
+                </div>
+                <div className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                  {backupInfo?.autoBackupEnabled ? '✓ Đang chạy ngầm tự động' : 'Tạm dừng'}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Lần Sao Lưu Vừa Qua</div>
+                <div className="mt-1 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {backupInfo?.lastBackupTime ? new Date(backupInfo.lastBackupTime).toLocaleTimeString('vi-VN') : 'Chưa chạy'}
+                </div>
+                <div className="mt-1 text-[10px] text-slate-400">
+                  Lượt sao lưu: {backupInfo?.totalBackups || 0} lần
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Trạng Thái Backup</div>
+                <div className="mt-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 truncate" title={backupInfo?.lastStatus}>
+                  {backupInfo?.lastStatus || 'Đang chuẩn bị...'}
+                </div>
+                <div className="mt-1 text-[10px] text-slate-400">
+                  Lượt kế tiếp: {backupInfo?.nextBackupTime ? new Date(backupInfo.nextBackupTime).toLocaleTimeString('vi-VN') : '5 phút nữa'}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Sync Operations Action Cards */}

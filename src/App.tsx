@@ -47,6 +47,8 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isMobileSimulator, setIsMobileSimulator] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
 
   // Application State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -301,6 +303,29 @@ export default function App() {
         </div>
       )}
 
+      {/* Mobile Slide-Over Overlay Drawer */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+          <div className="relative z-50 flex h-full w-72 flex-col bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-left duration-200">
+            <Sidebar
+              activeView={activeView}
+              onNavigate={(view) => {
+                setActiveView(view);
+                setIsMobileDrawerOpen(false);
+              }}
+              userRole={currentUser?.role}
+              trashCount={transactions.filter((t) => !!t.deletedAt).length}
+              isMobileDrawer={true}
+              onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation Header */}
       <Header
         user={currentUser}
@@ -327,17 +352,29 @@ export default function App() {
           api.setOnline(next);
           showToast(next ? 'Đã khôi phục kết nối Online' : 'Đã chuyển chế độ Chạy Offline');
         }}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => {
+          if (window.innerWidth < 1024 || isMobileSimulator) {
+            setIsMobileDrawerOpen(!isMobileDrawerOpen);
+          } else {
+            setIsSidebarCollapsed(!isSidebarCollapsed);
+          }
+        }}
       />
 
       <div className={`mx-auto flex ${isMobileSimulator ? 'max-w-md border-x border-slate-200 dark:border-slate-800 shadow-2xl my-4 rounded-3xl overflow-hidden bg-white dark:bg-slate-900' : 'w-full px-2 sm:px-6'}`}>
-        {/* Desktop Sidebar (hidden in simulator or mobile) */}
+        {/* Desktop Sidebar */}
         {!isMobileSimulator && (
-          <Sidebar
-            activeView={activeView}
-            onNavigate={setActiveView}
-            userRole={currentUser?.role}
-            trashCount={transactions.filter((t) => !!t.deletedAt).length}
-          />
+          <div className="hidden lg:block shrink-0">
+            <Sidebar
+              activeView={activeView}
+              onNavigate={setActiveView}
+              userRole={currentUser?.role}
+              trashCount={transactions.filter((t) => !!t.deletedAt).length}
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          </div>
         )}
 
         {/* Main Content Viewport */}
@@ -511,6 +548,7 @@ export default function App() {
               onToggleDarkMode={() => setDarkMode(!darkMode)}
               onExportAllData={handleExportAllData}
               onOpenGoogleSheet={() => setActiveView('google-sheet')}
+              onResetData={refreshData}
             />
           )}
         </main>
@@ -525,7 +563,7 @@ export default function App() {
           setQuickAddInitialType('expense');
           setIsQuickAddOpen(true);
         }}
-        onOpenMoreMenu={() => setActiveView('settings')}
+        onOpenMoreMenu={() => setIsMobileDrawerOpen(true)}
       />
 
       {/* Global Quick Add / Edit Modal */}
