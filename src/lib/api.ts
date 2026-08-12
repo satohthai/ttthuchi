@@ -85,18 +85,18 @@ class ApiClient {
       } else {
         const text = await res.text();
         if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error(`Đường dẫn API không tồn tại (${url}).`);
+          if (res.status === 404 || text.includes('The page could not be found') || text.includes('Not Found')) {
+            throw new Error(`Đường dẫn API không khả dụng (${url}).`);
           }
-          throw new Error(`Máy chủ trả về phản hồi không hợp lệ (${res.status}).`);
+          throw new Error(`Máy chủ phản hồi kết quả không hợp lệ (${res.status}).`);
         }
         try {
           json = JSON.parse(text);
         } catch {
-          if (text.startsWith('The page') || text.includes('<!DOCTYPE') || text.includes('<html')) {
-            throw new Error('Phản hồi từ máy chủ là trang HTML thay vì dữ liệu JSON. Vui lòng kiểm tra lại URL kết nối.');
+          if (text.includes('The page could not be found') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+            throw new Error('Kết nối máy chủ bị gián đoạn hoặc trang không tồn tại.');
           }
-          throw new Error('Dữ liệu trả về không đúng định dạng JSON.');
+          throw new Error('Dữ liệu từ máy chủ không đúng định dạng.');
         }
       }
 
@@ -107,7 +107,7 @@ class ApiClient {
       return json.data !== undefined ? json.data : json;
     } catch (err: any) {
       if (err instanceof SyntaxError || err.message?.includes('JSON')) {
-        throw new Error('Dữ liệu nhận được từ máy chủ không đúng định dạng JSON hợp lệ.');
+        throw new Error('Kết nối dữ liệu máy chủ tạm thời không ổn định.');
       }
       throw err;
     }
