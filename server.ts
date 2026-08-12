@@ -587,9 +587,9 @@ let auditLogs: AuditLog[] = [
 let currentUserId = "usr-1";
 
 let googleSheetConfig = {
-  url: "https://docs.google.com/spreadsheets/d/1mx3RCdD66a0iRFsAgZ62GtK3vTwbQIpO4cRKGzLTWWY/edit?usp=sharing",
-  isConnected: true,
-  lastSyncedAt: new Date().toISOString(),
+  url: "",
+  isConnected: false,
+  lastSyncedAt: null as string | null,
 };
 
 // 5-Minute Auto-Backup Engine Configuration
@@ -599,7 +599,7 @@ let autoBackupConfig = {
   lastBackupTime: new Date().toISOString(),
   nextBackupTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   totalBackups: 0,
-  lastStatus: "Sẵn sàng (Tự động đẩy Firebase sang Google Sheet định kỳ 5 phút)",
+  lastStatus: "Sẵn sàng (Định kỳ 5 phút tự động sao lưu sang Google Sheet khi có Web App URL)",
 };
 
 // Boot sync function: reads from Firebase Firestore or seeds initial data
@@ -702,6 +702,11 @@ async function execute5MinBackupToGoogleSheet() {
     return;
   }
 
+  if (!googleSheetConfig.url.includes("script.google.com")) {
+    autoBackupConfig.lastStatus = "Yêu cầu URL Google Apps Script Web App (script.google.com) để đồng bộ.";
+    return;
+  }
+
   const payload = {
     backupType: "Scheduled 5-Min Backup",
     database: "Firebase Firestore",
@@ -735,6 +740,10 @@ async function execute5MinBackupToGoogleSheet() {
       }),
     });
 
+    if (!res.ok) {
+      throw new Error(`Máy chủ Google Sheet trả về mã lỗi ${res.status}`);
+    }
+
     autoBackupConfig.lastBackupTime = new Date().toISOString();
     autoBackupConfig.totalBackups += 1;
     autoBackupConfig.lastStatus = `Đã sao lưu thành công lúc ${new Date().toLocaleTimeString("vi-VN")}`;
@@ -754,7 +763,7 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 async function pushToGoogleSheet(action: string, entity: string, data: any) {
-  if (!googleSheetConfig.url || !googleSheetConfig.isConnected) return;
+  if (!googleSheetConfig.url || !googleSheetConfig.isConnected || !googleSheetConfig.url.includes("script.google.com")) return;
   try {
     await fetch(googleSheetConfig.url, {
       method: "POST",
@@ -1758,6 +1767,13 @@ app.post("/api/google-sheet/export-all", async (req, res) => {
     return res.status(400).json({ success: false, error: { message: "Chưa cấu hình URL Google Sheet." } });
   }
 
+  if (!googleSheetConfig.url.includes("script.google.com")) {
+    return res.status(400).json({
+      success: false,
+      error: { message: "URL Google Sheet phải là URL Web App dạng 'https://script.google.com/macros/s/.../exec', không thể dùng link xem file 'docs.google.com/spreadsheets'." }
+    });
+  }
+
   const payload = {
     Transactions: transactions,
     Accounts: accounts,
@@ -1777,6 +1793,10 @@ app.post("/api/google-sheet/export-all", async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "syncAll", data: payload }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Google Apps Script trả về phản hồi không thành công (${response.status})`);
+    }
 
     googleSheetConfig.lastSyncedAt = new Date().toISOString();
     googleSheetConfig.isConnected = true;
@@ -1800,9 +1820,28 @@ app.post("/api/google-sheet/import-all", async (req, res) => {
     return res.status(400).json({ success: false, error: { message: "Chưa cấu hình URL Google Sheet." } });
   }
 
+  if (!googleSheetConfig.url.includes("script.google.com")) {
+    return res.status(400).json({
+      success: false,
+      error: { message: "URL Google Sheet phải là URL Web App dạng 'https://script.google.com/macros/s/.../exec', không thể dùng link xem file 'docs.google.com/spreadsheets'." }
+    });
+  }
+
   try {
     const response = await fetch(`${googleSheetConfig.url}?action=getAll`);
-    const json = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    let json: any;
+
+    if (contentType.includes("application/json")) {
+      json = await response.json();
+    } else {
+      const text = await response.text();
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error("Dữ liệu trả về từ Google Apps Script không phải là chuỗi JSON hợp lệ.");
+      }
+    }
 
     if (json && json.data) {
       const d = json.data;
@@ -1962,6 +2001,14 @@ app.post("/api/system/reset-all-data", async (req, res) => {
       error: { message: "Lỗi khi xóa dữ liệu hệ thống: " + err.message },
     });
   }
+});
+
+// Catch-all 404 handler for /api/* routes to prevent returning index.html
+app.use("/api/*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: { message: `Đường dẫn API không tồn tại (${req.originalUrl}).` },
+  });
 });
 
 // Serve Vite App or Static Files

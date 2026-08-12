@@ -68,17 +68,49 @@ class ApiClient {
   }
 
   private async fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      ...options,
-    });
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      throw new Error(json.error?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        ...options,
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      let json: any;
+
+      if (contentType.includes('application/json')) {
+        json = await res.json();
+      } else {
+        const text = await res.text();
+        if (!res.ok) {
+          if (res.status === 404) {
+            throw new Error(`Đường dẫn API không tồn tại (${url}).`);
+          }
+          throw new Error(`Máy chủ trả về phản hồi không hợp lệ (${res.status}).`);
+        }
+        try {
+          json = JSON.parse(text);
+        } catch {
+          if (text.startsWith('The page') || text.includes('<!DOCTYPE') || text.includes('<html')) {
+            throw new Error('Phản hồi từ máy chủ là trang HTML thay vì dữ liệu JSON. Vui lòng kiểm tra lại URL kết nối.');
+          }
+          throw new Error('Dữ liệu trả về không đúng định dạng JSON.');
+        }
+      }
+
+      if (!res.ok || json.success === false) {
+        throw new Error(json.error?.message || json.message || `Lỗi thao tác (${res.status}).`);
+      }
+
+      return json.data !== undefined ? json.data : json;
+    } catch (err: any) {
+      if (err instanceof SyntaxError || err.message?.includes('JSON')) {
+        throw new Error('Dữ liệu nhận được từ máy chủ không đúng định dạng JSON hợp lệ.');
+      }
+      throw err;
     }
-    return json.data;
   }
 
   // Auth
