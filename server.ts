@@ -95,7 +95,7 @@ app.use(express.json());
 let users: User[] = [
   {
     id: "usr-1",
-    name: "Admin",
+    name: "Thái",
     email: "admin@example.com",
     phone: "0901234567",
     role: "admin",
@@ -134,7 +134,7 @@ let users: User[] = [
 let families: Family[] = [
   {
     id: "fam-1",
-    name: "Gia đình Nguyễn",
+    name: "Gia đình Thái",
     ownerId: "usr-1",
     currency: "VND",
     timezone: "Asia/Ho_Chi_Minh",
@@ -148,8 +148,8 @@ let familyMembers: FamilyMember[] = [
     id: "fm-1",
     familyId: "fam-1",
     userId: "usr-1",
-    name: "Nguyễn Văn A (Ba)",
-    email: "demo@example.com",
+    name: "Thái (Admin)",
+    email: "admin@example.com",
     phone: "0901234567",
     role: "owner",
     joinedDate: "2026-01-01",
@@ -614,6 +614,39 @@ async function initFirestoreData() {
     if (!usersSnap.empty) {
       console.log("✅ Đang tải dữ liệu thực tế từ Firebase Firestore...");
       users = usersSnap.docs.map((doc) => doc.data() as User);
+
+      // Ensure account Thái / thai1991 is always configured
+      let thaiUser = users.find((u) => u.id === "usr-1" || u.role === "admin" || u.name === "Thái" || u.name === "Admin");
+      if (!thaiUser) {
+        thaiUser = {
+          id: "usr-1",
+          name: "Thái",
+          email: "admin@example.com",
+          phone: "0901234567",
+          role: "admin",
+          status: "active",
+          password: "thai1991",
+          hasPassword: true,
+          createdAt: new Date().toISOString(),
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        };
+        users.unshift(thaiUser);
+        await saveToFirestore("users", thaiUser.id, thaiUser);
+      } else {
+        let needSave = false;
+        if (thaiUser.name !== "Thái") {
+          thaiUser.name = "Thái";
+          needSave = true;
+        }
+        if (thaiUser.password !== "thai1991" || thaiUser.hasPassword !== true) {
+          thaiUser.password = "thai1991";
+          thaiUser.hasPassword = true;
+          needSave = true;
+        }
+        if (needSave) {
+          await saveToFirestore("users", thaiUser.id, thaiUser);
+        }
+      }
 
       const familiesSnap = await firestoreDb.collection("families").get();
       if (!familiesSnap.empty) families = familiesSnap.docs.map((doc) => doc.data() as Family);
@@ -1810,7 +1843,7 @@ app.post("/api/backup/trigger-now", async (req, res) => {
   }
 });
 
-// Full System Reset Endpoint (Wipes memory and Firebase collections completely to 0)
+// Full System Reset Endpoint (Wipes financial data completely, keeping admin account Thái / thai1991)
 app.post("/api/system/reset-all-data", async (req, res) => {
   try {
     transactions = [];
@@ -1821,6 +1854,51 @@ app.post("/api/system/reset-all-data", async (req, res) => {
     recurringTransactions = [];
     auditLogs = [];
 
+    // Reset user list to keep default admin Thái
+    users = [
+      {
+        id: "usr-1",
+        name: "Thái",
+        email: "admin@example.com",
+        phone: "0901234567",
+        role: "admin",
+        status: "active",
+        password: "thai1991",
+        hasPassword: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      },
+    ];
+
+    families = [
+      {
+        id: "fam-1",
+        name: "Gia đình Thái",
+        ownerId: "usr-1",
+        currency: "VND",
+        timezone: "Asia/Ho_Chi_Minh",
+        status: "active",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    familyMembers = [
+      {
+        id: "fm-1",
+        familyId: "fam-1",
+        userId: "usr-1",
+        name: "Thái (Admin)",
+        email: "admin@example.com",
+        phone: "0901234567",
+        role: "owner",
+        joinedDate: "2026-01-01",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        status: "active",
+      },
+    ];
+
+    currentUserId = "usr-1";
+
     if (firestoreDb) {
       await clearCollectionInFirestore("transactions");
       await clearCollectionInFirestore("accounts");
@@ -1829,13 +1907,17 @@ app.post("/api/system/reset-all-data", async (req, res) => {
       await clearCollectionInFirestore("debts");
       await clearCollectionInFirestore("recurringTransactions");
       await clearCollectionInFirestore("auditLogs");
+
+      for (const u of users) await saveToFirestore("users", u.id, u);
+      for (const f of families) await saveToFirestore("families", f.id, f);
+      for (const m of familyMembers) await saveToFirestore("familyMembers", m.id, m);
     }
 
-    addAuditLog("SYSTEM_RESET_ALL_DATA", "System", undefined, undefined, "Đã xóa trắng toàn bộ dữ liệu hệ thống và Firebase Firestore để cài đặt lại từ đầu.");
+    addAuditLog("SYSTEM_RESET_ALL_DATA", "System", undefined, undefined, "Đã xóa trắng toàn bộ dữ liệu giao dịch hệ thống và Firebase Firestore, giữ tài khoản quản trị Thái (thai1991).");
 
     res.json({
       success: true,
-      message: "Đã xóa TRẮNG toàn bộ dữ liệu thành công! Bạn có thể bắt đầu cài đặt tài khoản và thu chi mới hoàn toàn.",
+      message: "Đã xóa TRẮNG toàn bộ giao dịch & tài khoản! Tài khoản admin Thái (mật khẩu: thai1991) đã sẵn sàng để bạn khởi tạo lại từ đầu.",
     });
   } catch (err: any) {
     res.status(500).json({

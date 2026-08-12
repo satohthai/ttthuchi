@@ -50,8 +50,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     try {
       const list = await api.getUsersList();
       setUsers(list);
-      if (list.length > 0 && !selectedUserId) {
-        setSelectedUserId(list[0].id);
+      if (list.length > 0) {
+        const defaultUser = list.find((u) => u.id === 'usr-1' || u.name === 'Thái') || list[0];
+        setSelectedUserId(defaultUser.id);
+        if (defaultUser.name === 'Thái' || defaultUser.id === 'usr-1') {
+          setPassword('thai1991');
+        }
       }
     } catch (err) {
       console.error('Failed to load users list:', err);
@@ -128,6 +132,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       onClick={() => {
                         setSelectedUserId(u.id);
                         setErrorMsg(null);
+                        if (u.name === 'Thái' || u.id === 'usr-1') {
+                          setPassword('thai1991');
+                        } else {
+                          setPassword('1');
+                        }
                       }}
                       className={`flex flex-col items-center justify-center rounded-2xl p-3 text-center transition-all border ${
                         isSelected
